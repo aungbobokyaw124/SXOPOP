@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SXOPOP</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #000000; color: #ffffff; height: 100vh; overflow: hidden; }
+
+    /* Splash Screen Styles */
+    #splash-screen {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: #000000;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+    .splash-logo { width: 220px; max-width: 80%; height: auto; margin-bottom: 15px; }
+    .tagline { color: #a855f7; font-size: 14px; letter-spacing: 2px; font-weight: 600; text-transform: uppercase; }
+
+    /* Main Chat UI Styles */
+    #chat-container { display: none; flex-direction: column; height: 100vh; max-width: 600px; margin: 0 auto; background: #0a0a0a; }
+    
+    header {
+      padding: 15px;
+      background: #121212;
+      border-bottom: 1px solid #222;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .header-logo { height: 35px; width: auto; }
+
+    #messages { flex: 1; padding: 15px; overflow-y: auto; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    #messages li {
+      background: #1e1e1e;
+      padding: 10px 14px;
+      border-radius: 16px;
+      max-width: 75%;
+      word-wrap: break-word;
+      border-left: 3px solid #00f2fe;
+    }
+
+    #form { display: flex; padding: 12px; background: #121212; border-top: 1px solid #222; gap: 8px; }
+    #input {
+      flex: 1; padding: 12px 16px; border-radius: 24px;
+      border: 1px solid #333; background: #1e1e1e; color: #fff; outline: none;
+    }
+    #input:focus { border-color: #a855f7; }
+    
+    button {
+      background: #ffcc00; color: #000; border: none;
+      padding: 0 20px; border-radius: 24px; font-weight: bold; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Splash Screen -->
+  <div id="splash-screen">
+    <img src="logo.png" alt="SXOPOP" class="splash-logo">
+    <div class="tagline">Chat • Share • Connect</div>
+  </div>
+
+  <!-- Main App View -->
+  <div id="chat-container">
+    <header>
+      <img src="logo.png" alt="SXOPOP" class="header-logo">
+    </header>
+
+    <ul id="messages"></ul>
+
+    <form id="form">
+      <input id="input" autocomplete="off" placeholder="SXOPOP တွင် စာရိုက်ပါ..." required />
+      <button>Send</button>
+    </form>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // Splash Screen Timeout (2 Seconds)
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        const mainChat = document.getElementById('chat-container');
+        splash.style.opacity = '0';
+        setTimeout(() => {
+          splash.style.display = 'none';
+          mainChat.style.display = 'flex';
+        }, 500);
+      }, 2000);
+    });
+
+    // Socket.io Real-time Messaging Logic
+    const socket = io();
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+    const messages = document.getElementById('messages');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (input.value) {
+        socket.emit('chat message', input.value);
+        input.value = '';
+      }
+    });
+
+    socket.on('chat message', (msg) => {
+      const item = document.createElement('li');
+      item.textContent = msg;
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+    });
+  </script>
+</body>
+</html>
