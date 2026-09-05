@@ -29,17 +29,18 @@ jobs:
           npm install
           npm install @capacitor/core @capacitor/cli @capacitor/android
 
-      - name: Initialize Capacitor Project
+      - name: Initialize & Sync Capacitor Project
         run: |
           npx cap init SXOPOP com.sxopop.app --web-dir public
           npx cap add android
+          npx cap copy android
 
       - name: Generate Release Keystore & Build
         run: |
           cd android
           keytool -genkeypair -v -keystore release.keystore -alias sxopop -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=SXOPOP, OU=Dev, O=SXOPOP, L=Yangon, C=MM"
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --no-daemon
 
       - name: Sign Release APK
         run: |
