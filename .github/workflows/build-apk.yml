@@ -1,56 +1,64 @@
-name: Build SXOPOP Release APK
+name: Build Android Release APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Setup Java JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-
-      - name: Setup Java JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '21'
+          node-version: '20'
 
       - name: Install Dependencies
-        run: |
-          npm install
-          npm install @capacitor/core @capacitor/cli @capacitor/android
+        run: npm ci
 
-      - name: Build Capacitor Android
-        run: |
-          rm -rf android
-          npx cap init SXOPOP com.sxopop.app --web-dir public
-          npx cap add android
-          npx cap copy android
+      - name: Build Web Assets
+        run: npm run build
 
-      - name: Generate Keystore & Build Release APK
-        run: |
-          cd android
-          keytool -genkeypair -v -keystore release.keystore -alias sxopop -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=SXOPOP, OU=Dev, O=SXOPOP, L=Yangon, C=MM"
-          chmod +x gradlew
-          ./gradlew clean assembleRelease --no-daemon
+      - name: Copy Web Assets to Android
+        run: npx cap sync android
 
-      - name: Sign Release APK
+      - name: Generate Keystore
         run: |
-          BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | tail -n 1)
-          $BUILD_TOOLS/zipalign -v -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk android/app/build/outputs/apk/release/SXOPOP-Release.apk
-          $BUILD_TOOLS/apksigner sign --ks android/release.keystore --ks-pass pass:123456 --ks-key-alias sxopop --key-pass pass:123456 android/app/build/outputs/apk/release/SXOPOP-Release.apk
+          keytool -genkeypair -v \
+            -keystore release.keystore \
+            -storepass ${{ secrets.KEYSTORE_PASSWORD }} \
+            -keypass ${{ secrets.KEY_PASSWORD }} \
+            -alias release \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=SXOPOP, OU=Dev, O=SXOPOP, L=Yangon, S=Yangon, C=MM"
 
-      - name: Upload Release APK
+      - name: Build Release APK
+        working-directory: android
+        run: ./gradlew assembleRelease
+
+      - name: Sign APK
+        run: |
+          mkdir signed-apk
+          zipalign -v -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk signed-apk/app-release-aligned.apk
+          apksigner sign --ks release.keystore \
+            --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
+            --key-pass pass:${{ secrets.KEY_PASSWORD }} \
+            --out signed-apk/app-release-signed.apk \
+            signed-apk/app-release-aligned.apk
+
+      - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
           name: SXOPOP-Release-APK
-          path: android/app/build/outputs/apk/release/SXOPOP-Release.apk
+          path: signed-apk/app-release-signed.apk
